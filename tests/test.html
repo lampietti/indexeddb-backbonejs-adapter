@@ -9,7 +9,6 @@
         <script src="../lib/backbone.js" type="text/javascript"></script>
         <script src="../backbone-indexeddb.js" type="text/javascript"></script>
         <script>
-        var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB;
 
         var database = {
             id: "movies-database",
@@ -23,7 +22,11 @@
             }, {
                 version: "1.1",
                 migrate: function (db, versionRequest, next) {
-                    var store = versionRequest.transaction.objectStore("movies");
+                    var store = undefined;
+                    if(!db.objectStoreNames.contains("movies")){
+                        store = db.createObjectStore("movies");
+                    }
+                    store = versionRequest.transaction.objectStore("movies");
                     store.createIndex("titleIndex", "title", {
                         unique: false
                     });
@@ -45,6 +48,38 @@
             storeName: "movies",
             model: Movie
         });
+
+        function deleteDB(dbObj) {
+            try {
+
+                var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB ;
+
+                var dbreq = indexedDB.deleteDatabase(dbObj.id);
+                dbreq.onsuccess = function (event) {
+                    var db = event.result;
+                    console.log("indexedDB: " + dbObj.id + " deleted");
+                }
+                dbreq.onerror = function (event) {
+                    console.error("indexedDB.delete Error: " + event.message);
+                }
+            }
+            catch (e) {
+                console.error("Error: " + e.message);
+                //prefer change id of database to start ont new instance
+                dbObj.id = dbObj.id + "." + guid();
+                console.log("fallback to new database name :" + dbObj.id)
+            }
+        }
+
+        // Generate four random hex digits.
+            function S4() {
+                return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+            }
+
+            // Generate a pseudo-GUID by concatenating random hexadecimal.
+            function guid() {
+                return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
+            }
 
         function addAllMovies(movies, done) {
             if (!movies) {
@@ -106,6 +141,8 @@
                 asyncTest(t[0], t[1]);
             }
         }
+
+        deleteDB(database);
 
         var tests = [
             ["create model", function () {
@@ -170,7 +207,7 @@
                         success: function () {
                             // Ok, now we need to create a new movie object and retrieve it
                             var movie2 = new Movie({
-                                title: "Avatar",
+                                title: "Avatar"
                             });
                             movie2.fetch({
                                 success: function (object) {
@@ -197,7 +234,7 @@
                 }
 
                 var movie = new Movie({
-                    title: "Avatar",
+                    title: "Avatar"
                 });
                 movie.fetch({
                     success: function () {
@@ -217,7 +254,7 @@
             }],
             ["read model that do not exist with index", function () {
                 var movie = new Movie({
-                    title: "Memento",
+                    title: "Memento"
                 });
                 movie.fetch({
                     success: function (object) {
@@ -576,7 +613,7 @@
 
         // Let's go run the tests
         
-        nextTest(tests);
+        nextTest();
         
         
         // First, let's see the content of the database... because I'm little worried about it!

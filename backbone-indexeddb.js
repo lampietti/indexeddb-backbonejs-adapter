@@ -10,7 +10,7 @@
     }
 
     // Naming is a mess!
-    var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB;
+    var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB ;
     var IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction; // No prefix in moz
     var IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange; // No prefix in moz
 
@@ -19,8 +19,6 @@
          indexedDB.prototype._continue =  indexedDB.prototype.continue;
     } else if (window.webkitIDBRequest) {
         webkitIDBRequest.prototype._continue = webkitIDBRequest.prototype.continue;
-    } else if(window.mozIndexedDB) {
-        mozIndexedDB.prototype._continue = mozIndexedDB.prototype.continue;
     }
 
     // Driver object
@@ -117,8 +115,17 @@
                         var versionRequest = this.db.setVersion(migration.version);
                         versionRequest.onsuccess = function (e) {
                             var transaction = versionRequest.result;
-                            this._track_transaction(transaction);
-                            
+
+                            //last modification occurred, need finish
+                            if(migrations.length ==0) {
+                                transaction.oncomplete = function() {
+
+                                    debug_log("Done migrating");
+                                    // No more migration
+                                    options.success();
+                                }
+                            }
+
                             migration.migrate(this.db, versionRequest, function () {
                                 // Migration successfully appliedn let's go to the next one!
                                 migration.after(function () {
@@ -133,10 +140,6 @@
                     debug_log("Skipping migration " + migration.version);
                     this._migrate_next(migrations, version, options);
                 }
-            } else {
-                debug_log("Done migrating");
-                // No more migration
-                options.success();
             }
         },
 
@@ -168,7 +171,7 @@
         // options are just success and error callbacks.
         write: function (storeName, object, options) {
             var writeTransaction = this.db.transaction([storeName], IDBTransaction.READ_WRITE);
-            this._track_transaction(writeTransaction);
+            //this._track_transaction(writeTransaction);
             var store = writeTransaction.objectStore(storeName);
             var json = object.toJSON();
 
@@ -187,7 +190,7 @@
         // Reads from storeName in db with json.id if it's there of with any json.xxxx as long as xxx is an index in storeName 
         read: function (storeName, object, options) {
             var readTransaction = this.db.transaction([storeName], IDBTransaction.READ_ONLY);
-            this._track_transaction(readTransaction);
+            //this._track_transaction(readTransaction);
             
             var store = readTransaction.objectStore(storeName);
             var json = object.toJSON();
@@ -224,7 +227,7 @@
         // Deletes the json.id key and value in storeName from db.
         delete: function (storeName, object, options) {
             var deleteTransaction = this.db.transaction([storeName], IDBTransaction.READ_WRITE);
-            this._track_transaction(deleteTransaction);
+            //this._track_transaction(deleteTransaction);
             
             var store = deleteTransaction.objectStore(storeName);
             var json = object.toJSON();
@@ -248,7 +251,7 @@
             var elements = [];
             var skipped = 0, processed = 0;
             var queryTransaction = this.db.transaction([storeName], IDBTransaction.READ_ONLY);
-            this._track_transaction(queryTransaction);
+            //this._track_transaction(queryTransaction);
             
             var readCursor = null;
             var store = queryTransaction.objectStore(storeName);
@@ -323,11 +326,9 @@
                         }
                         else if (options.offset && options.offset > skipped) {
                             skipped++;
-                            cursor.continue(options.offset - skipped); /* We need to Moving the cursor forward */
+                            cursor.continue(); /* We need to Moving the cursor forward */
                         } else {
                             // This time, it looks like it's good!
-                            processed++;
-                            cursor.continue(); 
                             if (options.addIndividually) {
                                 collection.add(cursor.value);
                             } else if (options.clear) {
@@ -342,6 +343,8 @@
                             } else {
                                 elements.push(cursor.value);
                             }
+                            processed++;
+                            cursor.continue();
                         }
                     }
                 };
