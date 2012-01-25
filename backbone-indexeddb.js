@@ -23,7 +23,7 @@
 
     // Driver object
     // That's the interesting part.
-    // There is a driver for each schema provided. The schema is a te combination of name (for the database), a version as well as migrations to reach that 
+    // There is a driver for each schema provided. The schema is a combination of name (for the database), a version as well as migrations to reach that 
     // version of the database.
     function Driver(schema, ready) {
         this.schema         = schema;
@@ -34,7 +34,7 @@
         this.dbRequest      = indexedDB.open(this.schema.id, this.schema.description || "");
         
         this.dbRequest.onsuccess = function (e) {
-            this.db = e.target.result; // Attach the connection ot the queue. 
+            this.db = e.target.result; // Attach the connection or the queue. 
             
             if (this.db.version === _.last(this.schema.migrations).version) {
                 // No migration to perform!
@@ -127,7 +127,7 @@
                             }
 
                             migration.migrate(this.db, versionRequest, function () {
-                                // Migration successfully appliedn let's go to the next one!
+                                // Migration successfully applied let's go to the next one!
                                 migration.after(function () {
                                     debug_log("Migrated to " + migration.version);
                                     that._migrate_next(migrations, version, options);
@@ -384,7 +384,7 @@
 
     // Method used by Backbone for sync of data with data store. It was initially designed to work with "server side" APIs, This wrapper makes 
     // it work with the local indexedDB stuff. It uses the schema attribute provided by the object.
-    // The wrapper keeps an active Executuon Queue for each "schema", and executes querues agains it, based on the object type (collection or
+    // The wrapper keeps an active Execution Queue for each "schema", and executes queries against it, based on the object type (collection or
     // single model), but also the method... etc.
     // Keeps track of the connections
     var Databases = {};
